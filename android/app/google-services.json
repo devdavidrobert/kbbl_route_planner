@@ -1,0 +1,266 @@
+{
+  "project_info": {
+    "project_number": "963214365060",
+    "project_id": "komandos-c184e",
+    "storage_bucket": "komandos-c184e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963214365060:android:80de487471d3b9fd1a8dd1",
+        "android_client_info": {
+          "package_name": "com.example.kbbl_route_planner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWLBEC0OgoNiEIgVof5idEFjbBCazQtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963214365060-10pcl7jeg6tjv15d09eeptqurrfhm226.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.komandosReportNew"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963214365060:android:a4f2342c0600e5181a8dd1",
+        "android_client_info": {
+          "package_name": "com.example.kbbl_sales_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963214365060-f1b5ljuuied33h9mf5jobchf9q99ghb6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kbbl_sales_app",
+            "certificate_hash": "8a7e2df6ddd7d1315aa6f65ea0e61c7953114507"
+          }
+        },
+        {
+          "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWLBEC0OgoNiEIgVof5idEFjbBCazQtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963214365060-10pcl7jeg6tjv15d09eeptqurrfhm226.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.komandosReportNew"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963214365060:android:92e37a490b66c6f71a8dd1",
+        "android_client_info": {
+          "package_name": "com.example.komandos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963214365060-1lukkdi4a0vtpqqbp20qvh1ab4jr754e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.komandos",
+            "certificate_hash": "8a7e2df6ddd7d1315aa6f65ea0e61c7953114507"
+          }
+        },
+        {
+          "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWLBEC0OgoNiEIgVof5idEFjbBCazQtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963214365060-10pcl7jeg6tjv15d09eeptqurrfhm226.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.komandosReportNew"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963214365060:android:13be6f4cfad06cd81a8dd1",
+        "android_client_info": {
+          "package_name": "com.example.komandos_report"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963214365060-k0iea60aa8jv201c9kegis37vvoc7h6p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.komandos_report",
+            "certificate_hash": "8a7e2df6ddd7d1315aa6f65ea0e61c7953114507"
+          }
+        },
+        {
+          "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWLBEC0OgoNiEIgVof5idEFjbBCazQtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963214365060-10pcl7jeg6tjv15d09eeptqurrfhm226.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.komandosReportNew"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963214365060:android:bc8a3565a1ff5e961a8dd1",
+        "android_client_info": {
+          "package_name": "com.example.komandos_report_new"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963214365060-tvj9bv3d55k68ko9td3lsjk3534254tt.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.komandos_report_new",
+            "certificate_hash": "8a7e2df6ddd7d1315aa6f65ea0e61c7953114507"
+          }
+        },
+        {
+          "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWLBEC0OgoNiEIgVof5idEFjbBCazQtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963214365060-10pcl7jeg6tjv15d09eeptqurrfhm226.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.komandosReportNew"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963214365060:android:2208392269b405bd1a8dd1",
+        "android_client_info": {
+          "package_name": "com.example.komandosreport"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "963214365060-eg74eqg6pg683t6q08cn91v6jgib5m7h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.komandosreport",
+            "certificate_hash": "8a7e2df6ddd7d1315aa6f65ea0e61c7953114507"
+          }
+        },
+        {
+          "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQWLBEC0OgoNiEIgVof5idEFjbBCazQtU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963214365060-234lq0usgsl6dch8ddrkh27cb41mh49v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963214365060-10pcl7jeg6tjv15d09eeptqurrfhm226.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.komandosReportNew"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
