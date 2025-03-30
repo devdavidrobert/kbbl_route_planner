@@ -7,7 +7,7 @@ class EnrollCustomerUseCase {
 
   EnrollCustomerUseCase(this.repository);
 
-  Future<void> call(Customer customer) async {
+  Future<void> execute(Customer customer) async {
     await repository.addCustomer(customer);
   }
 }

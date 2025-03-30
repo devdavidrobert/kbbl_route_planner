@@ -14,6 +14,8 @@ UserProfileModel _$UserProfileModelFromJson(Map<String, dynamic> json) =>
       region: json['region'] as String?,
       territory: json['territory'] as String?,
       branch: json['branch'] as String?,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
 
 Map<String, dynamic> _$UserProfileModelToJson(UserProfileModel instance) =>
@@ -24,4 +26,6 @@ Map<String, dynamic> _$UserProfileModelToJson(UserProfileModel instance) =>
       'region': instance.region,
       'territory': instance.territory,
       'branch': instance.branch,
+      'createdAt': instance.createdAt.toIso8601String(),
+      'updatedAt': instance.updatedAt.toIso8601String(),
     };

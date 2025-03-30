@@ -8,24 +8,21 @@ class AuthInitial extends AuthState {}
 
 class AuthLoading extends AuthState {}
 
-class AuthLoggedOut extends AuthState {}
-
-class AuthProfileComplete extends AuthState {
+class AuthSuccess extends AuthState {
   final User user;
   final UserProfile profile;
 
-  AuthProfileComplete({required this.user, required this.profile});
+  AuthSuccess({required this.user, required this.profile});
 }
 
-class AuthProfileIncomplete extends AuthState {
+class AuthNeedsProfile extends AuthState {
   final User user;
-  final UserProfile? profile;
 
-  AuthProfileIncomplete({required this.user, this.profile});
+  AuthNeedsProfile({required this.user});
 }
 
-class AuthError extends AuthState {
+class AuthFailure extends AuthState {
   final String message;
 
-  AuthError(this.message);
+  AuthFailure({required this.message});
 }

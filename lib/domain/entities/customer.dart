@@ -6,9 +6,10 @@ class Customer {
   final String id;
   final String name;
   final List<Distributor> distributors;
-  final String invoiceName;
   final Location location;
   final String userId;
+  final String? region;
+  final String? territory;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -16,9 +17,10 @@ class Customer {
     required this.id,
     required this.name,
     required this.distributors,
-    required this.invoiceName,
     required this.location,
     required this.userId,
+    this.region,
+    this.territory,
     required this.createdAt,
     required this.updatedAt,
   });

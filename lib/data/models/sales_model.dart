@@ -1,4 +1,6 @@
 // lib/data/models/sales_model.dart
+import '../../domain/entities/sales.dart';
+
 class SalesModel {
   final String orderId;
   final String userId;
@@ -36,5 +38,16 @@ class SalesModel {
       'amount': amount,
       'date': date.toIso8601String(),
     };
+  }
+
+  Sales toEntity() {
+    return Sales(
+      orderId: orderId,
+      userId: userId,
+      customerId: customerId,
+      customerName: customerName,
+      amount: amount,
+      date: date,
+    );
   }
 }

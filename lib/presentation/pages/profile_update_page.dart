@@ -1,4 +1,6 @@
 // lib/presentation/pages/profile_update_page.dart
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/user.dart';
@@ -58,8 +60,9 @@ class _ProfileUpdateFormState extends State<ProfileUpdateForm> {
         region: _regionController.text,
         territory: _territoryController.text,
         branch: _branchController.text.isEmpty ? null : _branchController.text,
+        createdAt: widget.profile?.createdAt ?? DateTime.now(),
+        updatedAt: DateTime.now(),
       );
-      print('Submitting profile update: ${updatedProfile.toString()}');
       context
           .read<AuthBloc>()
           .add(AuthProfileUpdated(widget.user, updatedProfile));
@@ -82,7 +85,7 @@ class _ProfileUpdateFormState extends State<ProfileUpdateForm> {
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthProfileComplete) {
+        if (state is AuthSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile updated successfully')),
           );
@@ -90,9 +93,9 @@ class _ProfileUpdateFormState extends State<ProfileUpdateForm> {
           Navigator.of(context).pushNamedAndRemoveUntil(
             AppRoutes.home,
             (route) => false,
-            arguments: {'userId': state.user.id},
+            arguments: {'userId': state.profile.userId},
           );
-        } else if (state is AuthError) {
+        } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: ${state.message}')),
           );

@@ -1,66 +1,87 @@
 // lib/core/network/api_client.dart
-import 'package:dio/dio.dart';
-import '../constants/app_constants.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:logger/logger.dart';
+import '../error/exceptions.dart';
 
 class ApiClient {
-  final Dio _dio;
+  final String baseUrl;
+  final http.Client client;
+  final Logger _logger = Logger();
 
-  ApiClient() : _dio = Dio() {
-    _dio.options
-      ..baseUrl = AppConstants.apiBaseUrl
-      ..connectTimeout = AppConstants.connectTimeout
-      ..receiveTimeout = AppConstants.receiveTimeout;
-  }
+  ApiClient({required this.baseUrl, required this.client});
 
-  Future<Response> get(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) async {
+  Future<Map<String, dynamic>> get(String path) async {
     try {
-      return await _dio.get(
-        path,
-        queryParameters: queryParameters,
-        options: options,
-      );
+      final response = await client.get(Uri.parse('$baseUrl$path'));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else if (response.statusCode == 404) {
+        throw ServerException('Resource not found: $path');
+      } else {
+        throw ServerException(
+            'Server error: ${response.statusCode} - ${response.reasonPhrase}');
+      }
     } catch (e) {
-      rethrow;
+      _logger.e('GET request failed for $path: $e');
+      throw NetworkException('Failed to connect to server: $e');
     }
   }
 
-  Future<Response> post(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) async {
+  Future<Map<String, dynamic>> post(
+      String path, Map<String, dynamic> body) async {
     try {
-      return await _dio.post(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
+      final response = await client.post(
+        Uri.parse('$baseUrl$path'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        throw ServerException(
+            'Server error: ${response.statusCode} - ${response.reasonPhrase}');
+      }
     } catch (e) {
-      rethrow;
+      _logger.e('POST request failed for $path: $e');
+      throw NetworkException('Failed to connect to server: $e');
     }
   }
 
-  Future<Response> put(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-  }) async {
+  Future<Map<String, dynamic>> put(
+      String path, Map<String, dynamic> body) async {
     try {
-      return await _dio.put(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
+      final response = await client.put(
+        Uri.parse('$baseUrl$path'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(body),
       );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw ServerException(
+            'Server error: ${response.statusCode} - ${response.reasonPhrase}');
+      }
     } catch (e) {
-      rethrow;
+      _logger.e('PUT request failed for $path: $e');
+      throw NetworkException('Failed to connect to server: $e');
+    }
+  }
+
+  Future<void> delete(String path) async {
+    try {
+      final response = await client.delete(Uri.parse('$baseUrl$path'));
+
+      if (response.statusCode != 200) {
+        throw ServerException(
+            'Server error: ${response.statusCode} - ${response.reasonPhrase}');
+      }
+    } catch (e) {
+      _logger.e('DELETE request failed for $path: $e');
+      throw NetworkException('Failed to connect to server: $e');
     }
   }
 }

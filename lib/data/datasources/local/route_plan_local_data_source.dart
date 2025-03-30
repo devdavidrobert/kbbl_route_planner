@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import '../../models/route_plan_model.dart';
-import 'database_helper.dart';
+import '../../../core/helpers/database_helper.dart';
 
 class RoutePlanLocalDataSource {
   final DatabaseHelper dbHelper;

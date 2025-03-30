@@ -1,25 +1,52 @@
 // lib/presentation/pages/home_page.dart
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:logging/logging.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import '../blocs/sales/sales_bloc.dart';
 import '../blocs/sales/sales_event.dart';
 import '../blocs/sales/sales_state.dart';
-import '../../domain/entities/distributor.dart';
-import '../../domain/entities/location.dart';
-import '../../injection.dart' as di;
+import 'create_route_plan_page.dart';
+import 'enroll_customer_page.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   final String userId;
 
   const HomePage({required this.userId, super.key});
 
   @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final _logger = Logger('HomePage');
+  bool _isInitialFetchDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOrders();
+  }
+
+  void _fetchOrders() {
+    if (!_isInitialFetchDone && mounted) {
+      _logger.info('Performing initial orders fetch');
+      context.read<SalesBloc>().add(FetchOrders(widget.userId));
+      _isInitialFetchDone = true;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => di.sl<SalesBloc>()..add(FetchOrders(userId)),
+    return WillPopScope(
+      onWillPop: () async {
+        // Handle back button press
+        return true;
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Sales App'),
@@ -32,109 +59,107 @@ class HomePage extends StatelessWidget {
             ),
           ],
         ),
-        body: BlocListener<SalesBloc, SalesState>(
-          listener: (context, state) {
-            if (state is OrderPlaced) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content:
-                        Text('Order placed successfully: ${state.orderId}')),
-              );
-            } else if (state is CustomerEnrolled) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content: Text(
-                        'Customer enrolled successfully: ${state.customerId}')),
-              );
-            } else if (state is SalesError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('An error occurred. Please try again.')),
-              );
-            }
-          },
-          child: BlocBuilder<SalesBloc, SalesState>(
+        body: SafeArea(
+          child: BlocConsumer<SalesBloc, SalesState>(
+            listener: (context, state) {
+              if (!mounted) return;
+              
+              if (state is OrderPlaced) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Order placed successfully: ${state.orderId}')),
+                );
+                // Orders will be automatically refreshed by the bloc
+              } else if (state is CustomerEnrolled) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Customer enrolled successfully: ${state.customerId}')),
+                );
+                // Orders will be automatically refreshed by the bloc
+              } else if (state is SalesError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
             builder: (context, state) {
-              if (state is SalesLoading) {
+              if (state is SalesLoading && !_isInitialFetchDone) {
                 return const Center(child: CircularProgressIndicator());
-              } else if (state is OrdersLoaded) {
+              }
+
+              if (state is OrdersLoaded) {
                 if (state.orders.isEmpty) {
-                  return const Center(child: Text('No orders available'));
+                  return const Center(
+                    child: Text(
+                      'No orders found',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  );
                 }
+
                 return ListView.builder(
                   itemCount: state.orders.length,
                   itemBuilder: (context, index) {
                     final order = state.orders[index];
                     return ListTile(
-                      title: Text('Order #${order.id}'),
-                      subtitle: Text('Customer ID: ${order.customerId}'),
-                      trailing: Text('SKUs: ${order.skus.toString()}'),
+                      title: Text('Order ${order.id}'),
+                      subtitle: Text('Customer: ${order.customerId}'),
+                      trailing: Text(order.createdAt.toString()),
                     );
                   },
                 );
-              } else if (state is SalesError) {
+              }
+
+              if (state is SalesError) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Failed to load orders. Please try again.'),
-                      const SizedBox(height: 16),
+                      Text(
+                        'Error: ${state.message}',
+                        style: const TextStyle(color: Colors.red),
+                      ),
                       ElevatedButton(
-                        onPressed: () {
-                          context.read<SalesBloc>().add(FetchOrders(userId));
-                        },
+                        onPressed: _fetchOrders,
                         child: const Text('Retry'),
                       ),
                     ],
                   ),
                 );
               }
-              return const Center(child: Text('No data available'));
+
+              return const SizedBox.shrink();
             },
           ),
         ),
         floatingActionButton: SpeedDial(
           icon: Icons.add,
-          activeIcon: Icons.close,
           children: [
-            SpeedDialChild(
-              child: const Icon(Icons.shopping_cart),
-              label: 'Place Order',
-              onTap: () {
-                context.read<SalesBloc>().add(PlaceOrder(
-                      userId: userId,
-                      customerId: 'CUST001',
-                      skus: {
-                        'Original': {'300ml': 5},
-                        'Lite': {'500ml': 3},
-                      },
-                    ));
-              },
-            ),
             SpeedDialChild(
               child: const Icon(Icons.person_add),
               label: 'Enroll Customer',
               onTap: () {
-                context.read<SalesBloc>().add(EnrollCustomer(
-                      customerId: 'CUST001',
-                      customerName: 'Test Customer',
-                      userId: userId,
-                      distributors: [
-                        Distributor(
-                          id: 'DIST001',
-                          name: 'Distributor 1',
-                          contactInfo: 'dist1@example.com',
-                        ),
-                      ],
-                      invoiceName: 'Test Invoice',
-                      location: Location(
-                        locationName: 'Test Location',
-                        coordinates: Coordinates(
-                          latitude: 1.0,
-                          longitude: 2.0,
-                        ),
-                      ),
-                    ));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        EnrollCustomerPage(userId: widget.userId),
+                  ),
+                );
+              },
+            ),
+            SpeedDialChild(
+              child: const Icon(Icons.route),
+              label: 'Create Route Plan',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        CreateRoutePlanPage(userId: widget.userId),
+                  ),
+                );
               },
             ),
           ],

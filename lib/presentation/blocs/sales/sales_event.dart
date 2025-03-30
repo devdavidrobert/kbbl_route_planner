@@ -61,7 +61,6 @@ class EnrollCustomer extends SalesEvent {
   final String customerName;
   final String userId;
   final List<Distributor> distributors;
-  final String invoiceName;
   final Location location;
 
   EnrollCustomer({
@@ -69,7 +68,12 @@ class EnrollCustomer extends SalesEvent {
     required this.customerName,
     required this.userId,
     required this.distributors,
-    required this.invoiceName,
     required this.location,
   });
+}
+
+class FetchSalesData extends SalesEvent {
+  final String userId;
+
+  FetchSalesData(this.userId);
 }

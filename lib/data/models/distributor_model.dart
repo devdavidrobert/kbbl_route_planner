@@ -8,12 +8,12 @@ part 'distributor_model.g.dart';
 class DistributorModel {
   final String id;
   final String name;
-  final String contactInfo;
+  final String invoiceName;
 
   DistributorModel({
     required this.id,
     required this.name,
-    required this.contactInfo,
+    required this.invoiceName,
   });
 
   factory DistributorModel.fromJson(Map<String, dynamic> json) =>
@@ -23,13 +23,13 @@ class DistributorModel {
   Distributor toEntity() => Distributor(
         id: id,
         name: name,
-        contactInfo: contactInfo,
+        invoiceName: invoiceName,
       );
 
   static DistributorModel fromEntity(Distributor distributor) =>
       DistributorModel(
         id: distributor.id,
         name: distributor.name,
-        contactInfo: distributor.contactInfo,
+        invoiceName: distributor.invoiceName,
       );
 }

@@ -1,7 +1,7 @@
 // lib/data/datasources/local/stock_local_data_source.dart
 import 'package:sqflite/sqflite.dart';
 import '../../models/stock_model.dart';
-import 'database_helper.dart';
+import '../../../core/helpers/database_helper.dart';
 
 class StockLocalDataSource {
   final DatabaseHelper dbHelper;

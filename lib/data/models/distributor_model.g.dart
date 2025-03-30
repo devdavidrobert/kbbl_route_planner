@@ -10,12 +10,12 @@ DistributorModel _$DistributorModelFromJson(Map<String, dynamic> json) =>
     DistributorModel(
       id: json['id'] as String,
       name: json['name'] as String,
-      contactInfo: json['contactInfo'] as String,
+      invoiceName: json['invoiceName'] as String,
     );
 
 Map<String, dynamic> _$DistributorModelToJson(DistributorModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'contactInfo': instance.contactInfo,
+      'invoiceName': instance.invoiceName,
     };

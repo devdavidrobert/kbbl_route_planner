@@ -1,119 +1,115 @@
 // lib/data/datasources/remote/user_profile_remote_data_source.dart (updated)
-import 'package:dio/dio.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:logging/logging.dart';
 import '../../models/user_profile_model.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/constants/app_constants.dart';
+import '../../../core/error/exceptions.dart';
 
 class UserProfileRemoteDataSource {
   final ApiClient apiClient;
+  final _logger = Logger('UserProfileRemoteDataSource');
 
   UserProfileRemoteDataSource(this.apiClient);
 
+
   Future<UserProfileModel?> getUserProfile(String email) async {
     try {
-      final idToken =
-          await firebase_auth.FirebaseAuth.instance.currentUser?.getIdToken();
-      if (idToken == null) throw Exception('User not authenticated');
+      _logger.info('Fetching user profile for email: $email');
+      
+      final response = await apiClient.get('/users/profile?email=$email');
+      
+      _logger.info('Response received: $response');
 
-      print(
-          'Fetching user profile from: ${AppConstants.apiBaseUrl}/user_profiles?email=$email');
-      final response = await apiClient
-          .get(
-            '/user_profiles',
-            queryParameters: {'email': email},
-            options: Options(
-              headers: {'Authorization': 'Bearer $idToken'},
-              validateStatus: (status) {
-                return status != null && (status == 200 || status == 404);
-              },
-            ),
-          )
-          .timeout(
-            const Duration(seconds: 30),
-            onTimeout: () => throw Exception('Request timed out'),
-          );
-
-      print(
-          'Get user profile response: ${response.statusCode} ${response.data}');
-      if (response.statusCode == 200) {
-        if (response.data == null) return null;
-        return UserProfileModel.fromJson(response.data);
-      } else if (response.statusCode == 404) {
+      if (response['status'] == 404) {
+        _logger.info('User profile not found');
         return null;
       }
-      throw Exception(
-          'Failed to fetch user profile: ${response.statusMessage}');
+
+      if (response['status'] != 200) {
+        _logger.warning('Failed to fetch profile. Status: ${response['status']}');
+        throw ServerException('Failed to fetch user profile');
+      }
+
+      final data = response['data'];
+      if (data == null) {
+        _logger.warning('Response data is null');
+        return null;
+      }
+
+      _logger.info('Successfully fetched user profile');
+      return UserProfileModel.fromJson(data);
     } catch (e) {
-      print('Error fetching user profile: $e');
+      _logger.severe('Error fetching user profile: $e');
       rethrow;
     }
   }
 
   Future<void> createUserProfile(UserProfileModel profile) async {
     try {
-      final idToken =
-          await firebase_auth.FirebaseAuth.instance.currentUser?.getIdToken();
-      if (idToken == null) throw Exception('User not authenticated');
+      _logger.info('Creating user profile for email: ${profile.email}');
+      
+      final now = DateTime.now().toUtc();
+      
+      // Prepare the data according to the MongoDB schema
+      final data = {
+        'userId': profile.userId,
+        'email': profile.email,
+        'name': profile.name,
+        'region': profile.region,
+        'territory': profile.territory,
+        'branch': profile.branch,
+        'createdAt': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+      };
+      
+      _logger.fine('Sending profile data: $data');
+      
+      final response = await apiClient.post('/users/profile', data);
+      
+      _logger.info('Response received: $response');
 
-      print(
-          'Creating user profile at: ${AppConstants.apiBaseUrl}/user_profiles');
-      print('Request body: ${profile.toJson()}');
-      print('Authorization header: Bearer $idToken');
-      final response = await apiClient.post(
-        '/user_profiles',
-        data: profile.toJson(),
-        options: Options(
-          headers: {'Authorization': 'Bearer $idToken'},
-          validateStatus: (status) {
-            if (status == 404) {
-              print('Unexpected 404 response when creating user profile');
-            }
-            return status != null && (status == 201 || status == 404);
-          },
-        ),
-      );
-
-      print(
-          'Create user profile response: ${response.statusCode} ${response.data}');
-      if (response.statusCode != 201) {
-        throw Exception(
-            'Failed to create user profile: ${response.statusMessage}');
+      if (response['status'] != 201) {
+        _logger.warning('Failed to create profile. Status: ${response['status']}');
+        throw ServerException('Failed to create user profile');
       }
+
+      _logger.info('Successfully created user profile');
     } catch (e) {
-      print('Error creating user profile: $e');
+      _logger.severe('Error creating user profile: $e');
       rethrow;
     }
   }
 
   Future<void> updateUserProfile(UserProfileModel profile) async {
     try {
-      final idToken =
-          await firebase_auth.FirebaseAuth.instance.currentUser?.getIdToken();
-      if (idToken == null) throw Exception('User not authenticated');
+      _logger.info('Updating user profile for email: ${profile.email}');
+      
+      final now = DateTime.now().toUtc();
+      
+      // Prepare the data according to the MongoDB schema
+      final data = {
+        'userId': profile.userId,
+        'email': profile.email,
+        'name': profile.name,
+        'region': profile.region,
+        'territory': profile.territory,
+        'branch': profile.branch,
+        'updatedAt': now.toIso8601String(),
+      };
+      
+      _logger.fine('Sending profile data: $data');
+      
+      final response = await apiClient.put('/users/profile/${profile.userId}', data);
+      
+      _logger.info('Response received: $response');
 
-      print(
-          'Updating user profile at: ${AppConstants.apiBaseUrl}/user_profiles/${profile.userId}');
-      final response = await apiClient.put(
-        // Fixed: Changed post to put
-        '/user_profiles/${profile.userId}',
-        data: profile.toJson(),
-        options: Options(
-          headers: {'Authorization': 'Bearer $idToken'},
-          validateStatus: (status) {
-            return status != null && (status == 200 || status == 404);
-          },
-        ),
-      );
-
-      print(
-          'Update user profile response: ${response.statusCode} ${response.data}');
-      if (response.statusCode != 200) {
-        throw Exception(
-            'Failed to update user profile: ${response.statusMessage}');
+      if (response['status'] != 200) {
+        _logger.warning('Failed to update profile. Status: ${response['status']}');
+        throw ServerException('Failed to update user profile');
       }
+
+      _logger.info('Successfully updated user profile');
     } catch (e) {
-      print('Error updating user profile: $e');
+      _logger.severe('Error updating user profile: $e');
       rethrow;
     }
   }

@@ -2,11 +2,11 @@
 class Distributor {
   final String id;
   final String name;
-  final String contactInfo;
+  final String invoiceName;
 
   Distributor({
     required this.id,
     required this.name,
-    required this.contactInfo,
+    required this.invoiceName,
   });
 }

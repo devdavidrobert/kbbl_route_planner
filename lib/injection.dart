@@ -1,10 +1,18 @@
 // lib/injection.dart
 import 'package:get_it/get_it.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:logging/logging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'core/network/api_client.dart';
-import 'data/datasources/local/database_helper.dart';
+import 'core/network/network_info.dart';
+import 'core/helpers/database_helper.dart';
+import 'core/constants/app_constants.dart';
 import 'data/datasources/local/customer_local_data_source.dart';
-import 'data/datasources/local/route_plan_local_data_source.dart';
 import 'data/datasources/local/order_local_data_source.dart';
 import 'data/datasources/local/stock_local_data_source.dart';
 import 'data/datasources/remote/customer_remote_data_source.dart';
@@ -12,6 +20,7 @@ import 'data/datasources/remote/route_plan_remote_data_source.dart';
 import 'data/datasources/remote/order_remote_data_source.dart';
 import 'data/datasources/remote/sales_remote_data_source.dart';
 import 'data/datasources/remote/stock_remote_data_source.dart';
+import 'data/datasources/remote/auth_remote_data_source.dart';
 import 'data/datasources/remote/user_profile_remote_data_source.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/customer_repository_impl.dart';
@@ -27,11 +36,9 @@ import 'domain/repositories/route_plan_repository.dart';
 import 'domain/repositories/sales_repository.dart';
 import 'domain/repositories/stock_repository.dart';
 import 'domain/repositories/user_profile_repository.dart';
-import 'domain/usecases/enroll_customer.dart';
 import 'domain/usecases/fetch_routes.dart';
 import 'domain/usecases/create_route_plan.dart';
 import 'domain/usecases/update_route_plan.dart';
-import 'domain/usecases/place_order.dart';
 import 'domain/usecases/track_stock.dart';
 import 'domain/usecases/get_customer_performance.dart';
 import 'domain/usecases/get_customers.dart';
@@ -40,112 +47,182 @@ import 'domain/usecases/logout_use_case.dart';
 import 'domain/usecases/check_profile_use_case.dart';
 import 'domain/usecases/create_profile_use_case.dart';
 import 'domain/usecases/update_profile_use_case.dart';
-import 'domain/usecases/fetch_orders_use_case.dart'; // Renamed to match Order entity
+import 'domain/usecases/fetch_orders_use_case.dart';
+import 'domain/usecases/fetch_sales_data_use_case.dart';
+import 'domain/usecases/place_order.dart';
+import 'domain/usecases/enroll_customer.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
 import 'presentation/blocs/profile/profile_bloc.dart';
 import 'presentation/blocs/route_plan/route_plan_bloc.dart';
 import 'presentation/blocs/sales/sales_bloc.dart';
 
-final sl = GetIt.instance;
+final getIt = GetIt.instance;
 bool _isInitialized = false;
 
 Future<void> init() async {
   if (_isInitialized) return;
 
+  // Configure logging
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {});
+
+  final logger = Logger('DependencyInjection');
+  logger.info('Initializing dependencies');
+
   // Core
-  sl.registerLazySingleton(() => ApiClient());
-  sl.registerLazySingleton(() => Connectivity());
-  sl.registerLazySingleton(() => DatabaseHelper());
+  logger.info('Registering core dependencies');
+  getIt.registerLazySingleton(() => Connectivity());
+  getIt.registerLazySingleton<NetworkInfo>(
+      () => NetworkInfoImpl(getIt<Connectivity>()));
+  getIt.registerLazySingleton<ApiClient>(() => ApiClient(
+        baseUrl: AppConstants.apiBaseUrl,
+        client: http.Client(),
+      ));
+  getIt.registerLazySingleton<Logger>(() => Logger('KBBLRoutePlanner'));
+  getIt.registerLazySingleton(() => DatabaseHelper());
+
+  // External
+  logger.info('Registering external dependencies');
+  final sharedPreferences = await SharedPreferences.getInstance();
+  getIt.registerLazySingleton(() => sharedPreferences);
+
+  // Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  getIt.registerLazySingleton(() => FirebaseAuth.instance);
+  getIt.registerLazySingleton(() => GoogleSignIn());
 
   // Data Sources
-  sl.registerLazySingleton<CustomerLocalDataSource>(
-      () => CustomerLocalDataSource(sl()));
-  sl.registerLazySingleton<RoutePlanLocalDataSource>(
-      () => RoutePlanLocalDataSource(sl()));
-  sl.registerLazySingleton<OrderLocalDataSource>(
-      () => OrderLocalDataSource(sl()));
-  sl.registerLazySingleton<StockLocalDataSource>(
-      () => StockLocalDataSource(sl()));
-  sl.registerLazySingleton<CustomerRemoteDataSource>(
-      () => CustomerRemoteDataSource(sl()));
-  sl.registerLazySingleton<RoutePlanRemoteDataSource>(
-      () => RoutePlanRemoteDataSource(sl()));
-  sl.registerLazySingleton<OrderRemoteDataSource>(
-      () => OrderRemoteDataSource(sl()));
-  sl.registerLazySingleton<StockRemoteDataSource>(
-      () => StockRemoteDataSource(sl()));
-  sl.registerLazySingleton<UserProfileRemoteDataSource>(
-      () => UserProfileRemoteDataSource(sl()));
-  sl.registerLazySingleton<SalesRemoteDataSource>(
-      () => SalesRemoteDataSource(sl()));
+  logger.info('Registering data sources');
+  getIt.registerLazySingleton<CustomerLocalDataSource>(
+      () => CustomerLocalDataSource(getIt()));
+  getIt.registerLazySingleton<CustomerRemoteDataSource>(
+      () => CustomerRemoteDataSource(
+            apiClient: getIt(),
+            auth: getIt<FirebaseAuth>(),
+          ));
+  getIt.registerLazySingleton<OrderLocalDataSource>(
+      () => OrderLocalDataSource(getIt()));
+  getIt
+      .registerLazySingleton<OrderRemoteDataSource>(() => OrderRemoteDataSource(
+            apiClient: getIt(),
+            auth: getIt<FirebaseAuth>(),
+          ));
+  getIt
+      .registerLazySingleton<SalesRemoteDataSource>(() => SalesRemoteDataSource(
+            apiClient: getIt(),
+            auth: getIt<FirebaseAuth>(),
+          ));
+  getIt.registerLazySingleton<RoutePlanRemoteDataSource>(
+      () => RoutePlanRemoteDataSource(
+            apiClient: getIt(),
+            auth: getIt<FirebaseAuth>(),
+          ));
+  getIt.registerLazySingleton<StockLocalDataSource>(
+      () => StockLocalDataSource(getIt()));
+  getIt.registerLazySingleton<StockRemoteDataSource>(
+      () => StockRemoteDataSource(getIt<ApiClient>()));
+  getIt.registerLazySingleton<AuthRemoteDataSource>(
+    () => AuthRemoteDataSourceImpl(
+      firebaseAuth: getIt(),
+      googleSignIn: getIt(),
+    ),
+  );
+  getIt.registerLazySingleton<UserProfileRemoteDataSource>(
+    () => UserProfileRemoteDataSource(getIt()),
+  );
 
   // Repositories
-  sl.registerLazySingleton<AuthRepository>(() => AuthRepositoryImpl());
-  sl.registerLazySingleton<CustomerRepository>(() => CustomerRepositoryImpl(
-        localDataSource: sl(),
-        remoteDataSource: sl(),
-        connectivity: sl(),
+  logger.info('Registering repositories');
+  getIt.registerLazySingleton<AuthRepository>(
+    () => AuthRepositoryImpl(
+      firebaseAuth: getIt(),
+      userProfileRepository: getIt(),
+      googleSignIn: getIt(),
+    ),
+  );
+  getIt.registerLazySingleton<CustomerRepository>(() => CustomerRepositoryImpl(
+        localDataSource: getIt(),
+        remoteDataSource: getIt(),
+        connectivity: getIt<Connectivity>(),
       ));
-  sl.registerLazySingleton<RoutePlanRepository>(() => RoutePlanRepositoryImpl(
-        localDataSource: sl(),
-        remoteDataSource: sl(),
-        connectivity: sl(),
+  getIt
+      .registerLazySingleton<RoutePlanRepository>(() => RoutePlanRepositoryImpl(
+            localDataSource: getIt(),
+            remoteDataSource: getIt(),
+            connectivity: getIt<Connectivity>(),
       ));
-  sl.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(
-        localDataSource: sl(),
-        remoteDataSource: sl(),
-        connectivity: sl(),
+  getIt.registerLazySingleton<OrderRepository>(() => OrderRepositoryImpl(
+        localDataSource: getIt(),
+        remoteDataSource: getIt(),
+        connectivity: getIt<Connectivity>(),
       ));
-  sl.registerLazySingleton<StockRepository>(() => StockRepositoryImpl(
-        localDataSource: sl(),
-        remoteDataSource: sl(),
-        connectivity: sl(),
+  getIt.registerLazySingleton<StockRepository>(() => StockRepositoryImpl(
+        localDataSource: getIt(),
+        remoteDataSource: getIt(),
+        connectivity: getIt<Connectivity>(),
       ));
-
-  sl.registerLazySingleton<UserProfileRepository>(
-      () => UserProfileRepositoryImpl(
-            remoteDataSource: sl(),
-            connectivity: sl(),
-          ));
-  sl.registerLazySingleton<SalesRepository>(() => SalesRepositoryImpl(
-        remoteDataSource: sl(),
+  getIt.registerLazySingleton<UserProfileRepository>(
+    () => UserProfileRepositoryImpl(
+      remoteDataSource: getIt(),
+      connectivity: getIt<Connectivity>(),
+    ),
+  );
+  getIt.registerLazySingleton<SalesRepository>(() => SalesRepositoryImpl(
+        remoteDataSource: getIt(),
+        connectivity: getIt<Connectivity>(),
       ));
 
   // Use Cases
-  sl.registerLazySingleton(() => EnrollCustomer(sl()));
-  sl.registerLazySingleton(() => FetchRoutes(sl()));
-  sl.registerLazySingleton(() => CreateRoutePlan(sl()));
-  sl.registerLazySingleton(() => UpdateRoutePlan(sl()));
-  sl.registerLazySingleton(() => PlaceOrder(sl()));
-  sl.registerLazySingleton(() => TrackStock(sl()));
-  sl.registerLazySingleton(() => GetCustomerPerformance(sl(), sl()));
-  sl.registerLazySingleton(() => GetCustomers(sl()));
-  sl.registerLazySingleton(() => LoginUseCase(sl()));
-  sl.registerLazySingleton(() => LogoutUseCase(sl()));
-  sl.registerLazySingleton(() => CheckProfileUseCase(sl()));
-  sl.registerLazySingleton(() => CreateProfileUseCase(sl()));
-  sl.registerLazySingleton(() => UpdateProfileUseCase(sl()));
-  sl.registerLazySingleton(() => FetchOrdersUseCase(sl())); // Renamed
+  logger.info('Registering use cases');
+  getIt.registerLazySingleton(() => FetchRoutes(getIt()));
+  getIt.registerLazySingleton(() => CreateRoutePlan(getIt()));
+  getIt.registerLazySingleton(() => UpdateRoutePlan(getIt()));
+  getIt.registerLazySingleton(() => TrackStock(getIt()));
+  getIt.registerLazySingleton(() => GetCustomerPerformance(getIt(), getIt()));
+  getIt.registerLazySingleton(() => GetCustomers(getIt()));
+  getIt.registerLazySingleton(() => LoginUseCase(getIt()));
+  getIt.registerLazySingleton(() => LogoutUseCase(getIt()));
+  getIt.registerLazySingleton(() => CheckProfileUseCase(getIt()));
+  getIt.registerLazySingleton(() => CreateProfileUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
+  getIt.registerLazySingleton(() => FetchOrdersUseCase(getIt()));
+  getIt.registerLazySingleton(() => FetchSalesDataUseCase(getIt()));
+  getIt.registerLazySingleton(() => PlaceOrderUseCase(getIt()));
+  getIt.registerLazySingleton(() => EnrollCustomerUseCase(getIt()));
 
   // Blocs
-  sl.registerFactory(() => AuthBloc(
-        loginUseCase: sl(),
-        logoutUseCase: sl(),
-        checkProfileUseCase: sl(),
-        createProfileUseCase: sl(),
-        updateProfileUseCase: sl(),
+  logger.info('Registering BLoCs');
+  getIt.registerFactory(
+    () => AuthBloc(
+      loginUseCase: getIt(),
+      logoutUseCase: getIt(),
+      checkProfileUseCase: getIt(),
+      createProfileUseCase: getIt(),
+      updateProfileUseCase: getIt(),
+      authRepository: getIt(),
+    ),
+  );
+  getIt.registerFactory(
+    () => ProfileBloc(
+      createProfileUseCase: getIt(),
+      updateProfileUseCase: getIt(),
+      checkProfileUseCase: getIt(),
+    ),
+  );
+  getIt.registerFactory(() => RoutePlanBloc(
+        fetchRoutes: getIt(),
+        createRoutePlan: getIt(),
+        updateRoutePlan: getIt(),
       ));
-  sl.registerFactory(() => ProfileBloc(sl()));
-  sl.registerFactory(() => RoutePlanBloc(
-        fetchRoutes: sl(),
-        createRoutePlan: sl(),
-        updateRoutePlan: sl(),
-      ));
-  sl.registerFactory(() => SalesBloc(
-        fetchOrdersUseCase: sl(),
-        placeOrderUseCase: sl(),
-        enrollCustomerUseCase: sl(),
+  getIt.registerFactory(() => SalesBloc(
+        fetchOrdersUseCase: getIt(),
+        placeOrderUseCase: getIt(),
+        enrollCustomerUseCase: getIt(),
+        fetchSalesDataUseCase: getIt(),
       ));
 
   _isInitialized = true;
+  logger.info('Dependency injection completed');
 }

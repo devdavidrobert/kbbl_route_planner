@@ -1,5 +1,6 @@
 // lib/domain/usecases/login_use_case.dart
-import '../entities/user.dart';
+import 'package:kbbl_route_planner/domain/entities/auth_result.dart';
+
 import '../repositories/auth_repository.dart';
 
 class LoginUseCase {
@@ -7,7 +8,7 @@ class LoginUseCase {
 
   LoginUseCase(this.repository);
 
-  Future<User> execute() async {
+  Future<AuthResult> execute() async {
     return await repository.signInWithGoogle();
   }
 }

@@ -6,11 +6,13 @@ part 'route_plan_model.g.dart';
 
 @JsonSerializable()
 class RoutePlanModel {
+  @JsonKey(name: '_id', includeIfNull: false)
   final String id;
   final String userId;
   final String region;
   final String territory;
   final String route;
+  @JsonKey(fromJson: _scheduleFromJson, toJson: _scheduleToJson)
   final List<ScheduleModel> schedule;
   final List<String> customerIds;
   final DateTime createdAt;
@@ -30,7 +32,14 @@ class RoutePlanModel {
 
   factory RoutePlanModel.fromJson(Map<String, dynamic> json) =>
       _$RoutePlanModelFromJson(json);
-  Map<String, dynamic> toJson() => _$RoutePlanModelToJson(this);
+  
+  Map<String, dynamic> toJson() {
+    final json = _$RoutePlanModelToJson(this);
+    if (id.isEmpty) {
+      json.remove('_id'); // Remove empty ID when creating new route plan
+    }
+    return json;
+  }
 
   RoutePlan toEntity() => RoutePlan(
         id: id,
@@ -56,6 +65,16 @@ class RoutePlanModel {
         createdAt: routePlan.createdAt,
         updatedAt: routePlan.updatedAt,
       );
+
+  static List<ScheduleModel> _scheduleFromJson(List<dynamic> json) {
+    return json
+        .map((item) => ScheduleModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  static List<Map<String, dynamic>> _scheduleToJson(List<ScheduleModel> schedule) {
+    return schedule.map((item) => item.toJson()).toList();
+  }
 }
 
 @JsonSerializable()

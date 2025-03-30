@@ -1,13 +1,13 @@
 // lib/domain/usecases/fetch_orders_use_case.dart
 import '../entities/order.dart';
-import '../repositories/sales_repository.dart';
+import '../repositories/order_repository.dart';
 
 class FetchOrdersUseCase {
-  final SalesRepository repository;
+  final OrderRepository repository;
 
   FetchOrdersUseCase(this.repository);
 
   Future<List<Order>> execute(String userId) async {
-    return await repository.fetchOrders(userId);
+    return await repository.getOrders(userId);
   }
 }

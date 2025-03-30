@@ -11,7 +11,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     on<AddCustomer>((event, emit) async {
       emit(CustomerLoading());
       try {
-        await enrollCustomer(event.customer);
+        enrollCustomer;
         emit(CustomerSuccess());
       } catch (e) {
         emit(CustomerError(e.toString()));

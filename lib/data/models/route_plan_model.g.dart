@@ -8,14 +8,12 @@ part of 'route_plan_model.dart';
 
 RoutePlanModel _$RoutePlanModelFromJson(Map<String, dynamic> json) =>
     RoutePlanModel(
-      id: json['id'] as String,
+      id: json['_id'] as String,
       userId: json['userId'] as String,
       region: json['region'] as String,
       territory: json['territory'] as String,
       route: json['route'] as String,
-      schedule: (json['schedule'] as List<dynamic>)
-          .map((e) => ScheduleModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      schedule: RoutePlanModel._scheduleFromJson(json['schedule'] as List),
       customerIds: (json['customerIds'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
@@ -25,12 +23,12 @@ RoutePlanModel _$RoutePlanModelFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$RoutePlanModelToJson(RoutePlanModel instance) =>
     <String, dynamic>{
-      'id': instance.id,
+      '_id': instance.id,
       'userId': instance.userId,
       'region': instance.region,
       'territory': instance.territory,
       'route': instance.route,
-      'schedule': instance.schedule,
+      'schedule': RoutePlanModel._scheduleToJson(instance.schedule),
       'customerIds': instance.customerIds,
       'createdAt': instance.createdAt.toIso8601String(),
       'updatedAt': instance.updatedAt.toIso8601String(),

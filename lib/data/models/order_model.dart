@@ -8,7 +8,9 @@ part 'order_model.g.dart';
 class OrderModel {
   final String id;
   final String customerId;
-  final String userId;
+  @JsonKey(name: 'userId')
+  final String userId;  // This will be mapped to MongoDB ObjectId
+  @JsonKey(fromJson: _skusFromJson, toJson: _skusToJson)
   final Map<String, Map<String, int>> skus;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -43,4 +45,20 @@ class OrderModel {
         createdAt: order.createdAt,
         updatedAt: order.updatedAt,
       );
+
+  static Map<String, Map<String, int>> _skusFromJson(Map<String, dynamic> json) {
+    return json.map((key, value) => MapEntry(
+          key,
+          (value as Map<String, dynamic>).map(
+            (k, v) => MapEntry(k, v as int),
+          ),
+        ));
+  }
+
+  static Map<String, dynamic> _skusToJson(Map<String, Map<String, int>> skus) {
+    return skus.map((key, value) => MapEntry(
+          key,
+          value.map((k, v) => MapEntry(k, v)),
+        ));
+  }
 }

@@ -1,13 +1,17 @@
 // lib/presentation/pages/create_route_plan_page.dart
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/customer.dart';
 import '../../domain/entities/route_plan.dart';
 import '../blocs/route_plan/route_plan_bloc.dart';
 import '../blocs/route_plan/route_plan_event.dart';
 import '../blocs/route_plan/route_plan_state.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
 import '../blocs/sales/sales_bloc.dart';
 import '../blocs/sales/sales_state.dart';
+import '../blocs/sales/sales_event.dart';
 
 class CreateRoutePlanPage extends StatefulWidget {
   final String userId;
@@ -26,6 +30,21 @@ class _CreateRoutePlanPageState extends State<CreateRoutePlanPage> {
   List<String> _commonDays = [];
   bool _useSameDays = true;
   final List<String> _selectedCustomerIds = [];
+  String? _userRegion;
+  String? _userTerritory;
+
+  @override
+  void initState() {
+    super.initState();
+    // Get user profile data
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthSuccess) {
+      _userRegion = authState.profile.region;
+      _userTerritory = authState.profile.territory;
+    }
+    // Fetch customers
+    context.read<SalesBloc>().add(FetchSalesData(widget.userId));
+  }
 
   void _toggleWeek(int week) {
     setState(() {
@@ -93,6 +112,16 @@ class _CreateRoutePlanPageState extends State<CreateRoutePlanPage> {
 
   void _createRoutePlan() {
     if (_formKey.currentState!.validate()) {
+      if (_userRegion == null || _userTerritory == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Region and territory not set in your profile'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       for (var schedule in _schedules) {
         if (schedule.days.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -104,10 +133,10 @@ class _CreateRoutePlanPageState extends State<CreateRoutePlanPage> {
       }
 
       final routePlan = RoutePlan(
-        id: DateTime.now().toIso8601String(),
+        id: '', // Let MongoDB generate the ID
         userId: widget.userId,
-        region: 'Region', // Replace with actual region
-        territory: 'Territory', // Replace with actual territory
+        region: _userRegion!,
+        territory: _userTerritory!,
         route: _routeController.text,
         schedule: _schedules,
         customerIds: _selectedCustomerIds,
@@ -148,9 +177,30 @@ class _CreateRoutePlanPageState extends State<CreateRoutePlanPage> {
             key: _formKey,
             child: ListView(
               children: [
+                // Display user's region and territory
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Region: ${_userRegion ?? 'Not set'}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Territory: ${_userTerritory ?? 'Not set'}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _routeController,
-                  decoration: const InputDecoration(labelText: 'Route Name'),
+                  decoration: const InputDecoration(labelText: 'Route Name *'),
                   validator: (value) =>
                       value!.isEmpty ? 'Route name is required' : null,
                 ),
@@ -178,10 +228,9 @@ class _CreateRoutePlanPageState extends State<CreateRoutePlanPage> {
                       ),
                     ],
                   ),
-                if (_selectedWeeks.isNotEmpty)
-                  const Text('Select Days',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text('Select Days',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 if (_useSameDays && _selectedWeeks.isNotEmpty)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,27 +286,61 @@ class _CreateRoutePlanPageState extends State<CreateRoutePlanPage> {
                 const Text('Assign Customers',
                     style:
                         TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Optionally select customers to include in this route:',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
                 BlocBuilder<SalesBloc, SalesState>(
                   builder: (context, state) {
-                    if (state is SalesDataLoaded) {
+                    if (state is SalesLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is SalesDataLoaded) {
+                      final filteredCustomers = state.customers.where((customer) {
+                        // Only show customers in the user's region/territory
+                        final regionMatch = _userRegion == null ||
+                            customer.region == _userRegion;
+                        final territoryMatch = _userTerritory == null ||
+                            customer.territory == _userTerritory;
+                        return regionMatch && territoryMatch;
+                      }).toList();
+
+                      if (filteredCustomers.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text(
+                            'No customers found in your region/territory.',
+                            style: TextStyle(fontStyle: FontStyle.italic),
+                          ),
+                        );
+                      }
+
                       return Column(
-                        children: state.customers.map((customer) {
-                          return CheckboxListTile(
-                            title: Text(customer.name),
-                            value: _selectedCustomerIds.contains(customer.id),
-                            onChanged: (value) => _toggleCustomer(customer.id),
-                          );
-                        }).toList(),
+                        children: [
+                          ...filteredCustomers.map((customer) {
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: CheckboxListTile(
+                                title: Text(customer.name),
+                                subtitle: Text(
+                                    '${customer.location.locationName}\nDistributor: ${customer.distributors.first.name}'),
+                                value: _selectedCustomerIds.contains(customer.id),
+                                onChanged: (bool? value) =>
+                                    _toggleCustomer(customer.id),
+                              ),
+                            );
+                          }),
+                        ],
                       );
                     }
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                        child: Text('Failed to load customers'));
                   },
                 ),
                 const SizedBox(height: 16),
                 BlocBuilder<RoutePlanBloc, RoutePlanState>(
                   builder: (context, state) {
                     if (state is RoutePlanLoading) {
-                      return const CircularProgressIndicator();
+                      return const Center(child: CircularProgressIndicator());
                     }
                     return ElevatedButton(
                       onPressed: _createRoutePlan,

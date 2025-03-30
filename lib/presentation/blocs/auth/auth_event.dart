@@ -21,3 +21,7 @@ class AuthProfileUpdated extends AuthEvent {
 
   AuthProfileUpdated(this.user, this.profile);
 }
+
+class SignInWithGooglePressed extends AuthEvent {}
+
+class SignOutPressed extends AuthEvent {}

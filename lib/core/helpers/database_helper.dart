@@ -1,12 +1,11 @@
-import 'package:logger/logger.dart';
+// lib/data/datasources/local/database_helper.dart
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => instance;
+  static final DatabaseHelper _instance = DatabaseHelper._internal();
+  factory DatabaseHelper() => _instance;
   static Database? _database;
-  final Logger _logger = Logger(); // Initialize the logger
 
   DatabaseHelper._internal();
 
@@ -19,18 +18,28 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'sales_app.db');
     return await openDatabase(
       path,
-      version: 3, // Increment version number
+      version: 2,
       onCreate: (db, version) async {
         await _createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        await _upgradeDatabase(db, oldVersion, newVersion);
+        if (oldVersion < 2) {
+          await db.execute('DROP TABLE IF EXISTS distributors');
+          await db.execute('''
+            CREATE TABLE distributors (
+              id TEXT PRIMARY KEY,
+              customerId TEXT,
+              name TEXT,
+              invoiceName TEXT,
+              FOREIGN KEY (customerId) REFERENCES customers(id)
+            )
+          ''');
+        }
       },
     );
   }
 
   Future<void> _createTables(Database db) async {
-    _logger.i('Creating tables in the database'); // Log info
     await db.execute('''
       CREATE TABLE customers (
         id TEXT PRIMARY KEY,
@@ -39,14 +48,11 @@ class DatabaseHelper {
         latitude REAL,
         longitude REAL,
         userId TEXT,
-        region TEXT,
-        territory TEXT,
         createdAt TEXT,
         updatedAt TEXT
       )
     ''');
-    _logger.i('Customers table created successfully'); // Log success
-
+    
     await db.execute('''
       CREATE TABLE distributors (
         id TEXT PRIMARY KEY,
@@ -56,7 +62,7 @@ class DatabaseHelper {
         FOREIGN KEY (customerId) REFERENCES customers(id)
       )
     ''');
-
+    
     await db.execute('''
       CREATE TABLE route_plans (
         id TEXT PRIMARY KEY,
@@ -70,7 +76,7 @@ class DatabaseHelper {
         updatedAt TEXT
       )
     ''');
-
+    
     await db.execute('''
       CREATE TABLE orders (
         id TEXT PRIMARY KEY,
@@ -81,7 +87,7 @@ class DatabaseHelper {
         updatedAt TEXT
       )
     ''');
-
+    
     await db.execute('''
       CREATE TABLE stock (
         id TEXT PRIMARY KEY,
@@ -94,34 +100,14 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> _upgradeDatabase(
-      Database db, int oldVersion, int newVersion) async {
-    _logger.i(
-        'Upgrading database from version $oldVersion to $newVersion'); // Log upgrade
-    if (oldVersion < 2) {
-      // Drop and recreate distributors table
-      await db.execute('DROP TABLE IF EXISTS distributors');
-      await db.execute('''
-        CREATE TABLE distributors (
-          id TEXT PRIMARY KEY,
-          customerId TEXT,
-          name TEXT,
-          invoiceName TEXT,
-          FOREIGN KEY (customerId) REFERENCES customers(id)
-        )
-      ''');
-    }
-    if (oldVersion < 3) {
-      // Add region and territory columns to customers table
-      await db.execute('''
-        ALTER TABLE customers
-        ADD COLUMN region TEXT;
-      ''');
-      await db.execute('''
-        ALTER TABLE customers
-        ADD COLUMN territory TEXT;
-      ''');
-    }
-    _logger.i('Database upgraded successfully'); // Log success
+  Future<void> clearAllData() async {
+    final db = await database;
+    await db.transaction((txn) async {
+      await txn.delete('customers');
+      await txn.delete('distributors');
+      await txn.delete('route_plans');
+      await txn.delete('orders');
+      await txn.delete('stock');
+    });
   }
 }

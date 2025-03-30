@@ -6,14 +6,16 @@ import 'location_model.dart';
 
 part 'customer_model.g.dart';
 
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class CustomerModel {
   final String id;
   final String name;
   final List<DistributorModel> distributors;
-  final String invoiceName;
   final LocationModel location;
-  final String userId;
+  @JsonKey(name: 'userId')
+  final String userId;  // This will be mapped to MongoDB ObjectId on the backend
+  final String? region;
+  final String? territory;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -21,9 +23,10 @@ class CustomerModel {
     required this.id,
     required this.name,
     required this.distributors,
-    required this.invoiceName,
     required this.location,
     required this.userId,
+    this.region,
+    this.territory,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -36,9 +39,10 @@ class CustomerModel {
         id: id,
         name: name,
         distributors: distributors.map((d) => d.toEntity()).toList(),
-        invoiceName: invoiceName,
         location: location.toEntity(),
         userId: userId,
+        region: region,
+        territory: territory,
         createdAt: createdAt,
         updatedAt: updatedAt,
       );
@@ -49,9 +53,10 @@ class CustomerModel {
         distributors: customer.distributors
             .map((d) => DistributorModel.fromEntity(d))
             .toList(),
-        invoiceName: customer.invoiceName,
         location: LocationModel.fromEntity(customer.location),
         userId: customer.userId,
+        region: customer.region,
+        territory: customer.territory,
         createdAt: customer.createdAt,
         updatedAt: customer.updatedAt,
       );
