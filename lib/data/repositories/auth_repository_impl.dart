@@ -6,7 +6,6 @@ import '../../domain/entities/user.dart' as domain;
 import '../../domain/entities/auth_result.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/repositories/user_profile_repository.dart';
-import '../../domain/core/failures.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final firebase_auth.FirebaseAuth _firebaseAuth;
@@ -21,10 +20,7 @@ class AuthRepositoryImpl implements AuthRepository {
   })  : _firebaseAuth = firebaseAuth,
         _userProfileRepository = userProfileRepository,
         _googleSignIn = googleSignIn ?? GoogleSignIn(
-          scopes: [
-            'email',
-            'profile',
-          ],
+          scopes: ['email', 'profile'],
           signInOption: SignInOption.standard,
         );
 
@@ -32,25 +28,11 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthResult> signInWithGoogle() async {
     try {
       _logger.info('Starting Google Sign-In process');
-      
-      // First ensure we're signed out
-      try {
-        final currentUser = await _googleSignIn.signInSilently();
-        if (currentUser != null) {
-          await _googleSignIn.disconnect();
-        }
-        await _firebaseAuth.signOut();
-      } catch (e) {
-        _logger.warning('Error during sign out (continuing anyway): $e');
-      }
-      
-      // Add a small delay to ensure previous sign-out is complete
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      // Get Google sign in
+      await _firebaseAuth.signOut();
+      await _googleSignIn.signOut();
+
       _logger.info('Showing Google Sign-In UI');
       final googleUser = await _googleSignIn.signIn();
-      
       if (googleUser == null) {
         _logger.warning('Google Sign-In cancelled by user');
         throw Exception('Sign in was cancelled');
@@ -58,82 +40,63 @@ class AuthRepositoryImpl implements AuthRepository {
 
       _logger.info('Google Sign-In successful, getting auth tokens');
       final googleAuth = await googleUser.authentication;
-      
+      _logger.fine('GoogleAuth: accessToken=${googleAuth.accessToken}, idToken=${googleAuth.idToken}');
       if (googleAuth.accessToken == null || googleAuth.idToken == null) {
         _logger.severe('Google auth tokens are null');
-        throw Exception('Failed to get authentication tokens. Please try again.');
-      }
-      
-      // Create Firebase credential
-      _logger.info('Creating Firebase credential');
-      final credential = firebase_auth.GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      // Sign in to Firebase
-      _logger.info('Signing in to Firebase');
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
-      final user = userCredential.user;
-      
-      if (user == null) {
-        _logger.severe('Firebase user is null after successful credential sign in');
-        throw Exception('Unable to sign in');
+        throw Exception('Failed to get authentication tokens');
       }
 
-      // Verify the email matches
-      if (user.email != googleUser.email) {
-        _logger.severe('Email mismatch between Google (${googleUser.email}) and Firebase (${user.email})');
-        throw Exception('Authentication error: email mismatch');
-      }
-
-      _logger.info('Successfully signed in to Firebase. User: ${user.email}');
-      
-      // Create domain user
-      final domainUser = domain.User(
-        id: user.uid,
-        email: user.email ?? googleUser.email,
-        displayName: user.displayName ?? googleUser.displayName,
-      );
-
-      // Check if user exists in MongoDB
-      _logger.info('Checking if user exists in MongoDB');
-      final profileResult = await _userProfileRepository.getUserProfile(domainUser.email);
-      
-      return await profileResult.fold(
-        (failure) {
-          if (failure is NetworkFailure) {
-            throw Exception('Unable to check user profile. Please check your internet connection.');
-          } else {
-            throw Exception('Unable to check user profile. Please try again.');
-          }
-        },
-        (profile) {
-          if (profile == null) {
-            _logger.info('User not found in MongoDB, needs profile creation');
-            return AuthResult(
-              user: domainUser,
-              profile: null,
-              needsProfile: true,
-            );
-          } else {
-            _logger.info('User found in MongoDB with profile');
-            return AuthResult(
-              user: domainUser,
-              profile: profile,
-              needsProfile: false,
-            );
-          }
-        },
-      );
-    } catch (e) {
-      _logger.severe('Sign in error: $e');
-      // Clean up on error
+      domain.User domainUser;
       try {
-        await _googleSignIn.disconnect();
+        _logger.info('Creating Firebase credential');
+        final credential = firebase_auth.GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        _logger.info('Signing in to Firebase');
+        final userCredential = await _firebaseAuth.signInWithCredential(credential);
+        _logger.fine('UserCredential: user=${userCredential.user}, additionalInfo=${userCredential.additionalUserInfo}');
+        final user = userCredential.user;
+        if (user == null) {
+          _logger.severe('Firebase user is null');
+          throw Exception('Unable to sign in');
+        }
+        _logger.info('Firebase user: ${user.email}, ${user.uid}');
+        domainUser = domain.User(
+          id: user.uid,
+          email: user.email ?? googleUser.email,
+          displayName: user.displayName ?? googleUser.displayName,
+        );
+      } catch (firebaseError, stackTrace) {
+        _logger.warning('Firebase sign-in failed, falling back to Google user: $firebaseError', firebaseError, stackTrace);
+        domainUser = domain.User(
+          id: googleUser.id,
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+        );
+      }
+
+      _logger.info('Checking user profile in MongoDB for: ${domainUser.email}');
+      final profileResult = await _userProfileRepository.getUserProfile(domainUser.email);
+      return profileResult.fold(
+        (failure) {
+          _logger.severe('Profile check failed: ${failure.message}');
+          throw Exception('Profile check failed: ${failure.message}');
+        },
+        (profile) => AuthResult(
+          user: domainUser,
+          profile: profile,
+          needsProfile: profile == null,
+        ),
+      );
+    } catch (e, stackTrace) {
+      _logger.severe('Sign in error: $e', e, stackTrace);
+      try {
+        await _googleSignIn.signOut();
         await _firebaseAuth.signOut();
       } catch (cleanupError) {
-        _logger.warning('Error during cleanup: $cleanupError');
+        _logger.warning('Cleanup failed: $cleanupError');
       }
       rethrow;
     }
@@ -148,8 +111,8 @@ class AuthRepositoryImpl implements AuthRepository {
         _firebaseAuth.signOut(),
       ]);
       _logger.info('Sign out successful');
-    } catch (e) {
-      _logger.severe('Sign out error: $e');
+    } catch (e, stackTrace) {
+      _logger.severe('Sign out error: $e', e, stackTrace);
       rethrow;
     }
   }
@@ -159,18 +122,26 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final firebaseUser = _firebaseAuth.currentUser;
       if (firebaseUser == null) {
-        _logger.info('No current user found');
-        return null;
+        _logger.info('No current user found in Firebase, checking Google');
+        final googleUser = await _googleSignIn.signInSilently();
+        if (googleUser == null) {
+          _logger.info('No current user found');
+          return null;
+        }
+        return domain.User(
+          id: googleUser.id,
+          email: googleUser.email,
+          displayName: googleUser.displayName,
+        );
       }
-      
       _logger.info('Current user found: ${firebaseUser.uid}');
       return domain.User(
         id: firebaseUser.uid,
         email: firebaseUser.email ?? '',
         displayName: firebaseUser.displayName,
       );
-    } catch (e) {
-      _logger.severe('Error getting current user: $e');
+    } catch (e, stackTrace) {
+      _logger.severe('Error getting current user: $e', e, stackTrace);
       return null;
     }
   }

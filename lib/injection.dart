@@ -20,7 +20,6 @@ import 'data/datasources/remote/route_plan_remote_data_source.dart';
 import 'data/datasources/remote/order_remote_data_source.dart';
 import 'data/datasources/remote/sales_remote_data_source.dart';
 import 'data/datasources/remote/stock_remote_data_source.dart';
-import 'data/datasources/remote/auth_remote_data_source.dart';
 import 'data/datasources/remote/user_profile_remote_data_source.dart';
 import 'data/repositories/auth_repository_impl.dart';
 import 'data/repositories/customer_repository_impl.dart';
@@ -74,10 +73,17 @@ Future<void> init() async {
   getIt.registerLazySingleton(() => Connectivity());
   getIt.registerLazySingleton<NetworkInfo>(
       () => NetworkInfoImpl(getIt<Connectivity>()));
-  getIt.registerLazySingleton<ApiClient>(() => ApiClient(
-        baseUrl: AppConstants.apiBaseUrl,
-        client: http.Client(),
-      ));
+getIt.registerLazySingleton<ApiClient>(() => ApiClient(
+      baseUrl: AppConstants.apiBaseUrl,
+      client: http.Client(),
+      logger: getIt<Logger>(),
+    ));
+getIt.registerLazySingleton<CustomerRepository>(() => CustomerRepositoryImpl(
+      localDataSource: getIt(),
+      remoteDataSource: getIt(),
+      connectivity: getIt<Connectivity>(),
+      logger: getIt<Logger>(),
+    ));
   getIt.registerLazySingleton<Logger>(() => Logger('KBBLRoutePlanner'));
   getIt.registerLazySingleton(() => DatabaseHelper());
 
@@ -123,12 +129,6 @@ Future<void> init() async {
       () => StockLocalDataSource(getIt()));
   getIt.registerLazySingleton<StockRemoteDataSource>(
       () => StockRemoteDataSource(getIt<ApiClient>()));
-  getIt.registerLazySingleton<AuthRemoteDataSource>(
-    () => AuthRemoteDataSourceImpl(
-      firebaseAuth: getIt(),
-      googleSignIn: getIt(),
-    ),
-  );
   getIt.registerLazySingleton<UserProfileRemoteDataSource>(
     () => UserProfileRemoteDataSource(getIt()),
   );
@@ -142,11 +142,6 @@ Future<void> init() async {
       googleSignIn: getIt(),
     ),
   );
-  getIt.registerLazySingleton<CustomerRepository>(() => CustomerRepositoryImpl(
-        localDataSource: getIt(),
-        remoteDataSource: getIt(),
-        connectivity: getIt<Connectivity>(),
-      ));
   getIt
       .registerLazySingleton<RoutePlanRepository>(() => RoutePlanRepositoryImpl(
             localDataSource: getIt(),

@@ -84,53 +84,24 @@ class _HomePageState extends State<HomePage> {
               }
             },
             builder: (context, state) {
-              if (state is SalesLoading && !_isInitialFetchDone) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              if (state is OrdersLoaded) {
-                if (state.orders.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No orders found',
-                      style: TextStyle(fontSize: 16),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: state.orders.length,
-                  itemBuilder: (context, index) {
-                    final order = state.orders[index];
-                    return ListTile(
-                      title: Text('Order ${order.id}'),
-                      subtitle: Text('Customer: ${order.customerId}'),
-                      trailing: Text(order.createdAt.toString()),
-                    );
-                  },
-                );
-              }
-
-              if (state is SalesError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Error: ${state.message}',
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                      ElevatedButton(
-                        onPressed: _fetchOrders,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
-              return const SizedBox.shrink();
-            },
+  if (state is SalesLoading) {
+    return const Center(child: CircularProgressIndicator());
+  } else if (state is OrdersLoaded) {
+    return ListView.builder(
+      itemCount: state.orders.length,
+      itemBuilder: (context, index) {
+        final order = state.orders[index];
+        return ListTile(
+          title: Text('Order ${order.id}'),
+          subtitle: Text('Customer: ${order.customerId}'),
+        );
+      },
+    );
+  } else if (state is SalesError) {
+    return Center(child: Text('Error: ${state.message}'));
+  }
+  return const Center(child: Text('No data'));
+},
           ),
         ),
         floatingActionButton: SpeedDial(

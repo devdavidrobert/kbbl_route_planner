@@ -1,6 +1,3 @@
-// lib/presentation/pages/order_page.dart
-// ignore_for_file: library_private_types_in_public_api
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/customer.dart';
@@ -43,7 +40,7 @@ class _OrderPageState extends State<OrderPage> {
       appBar: AppBar(title: const Text('Place Order')),
       body: BlocListener<SalesBloc, SalesState>(
         listener: (context, state) {
-          if (state is SalesDataLoaded) {
+          if (state is OrderPlaced) { // Replace SalesDataLoaded
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Order placed successfully')),

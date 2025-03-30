@@ -1,6 +1,3 @@
-// lib/presentation/pages/new_order_page.dart
-// ignore_for_file: library_private_types_in_public_api, use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
@@ -49,8 +46,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
     final isWithinProximity = await _checkProximity();
     if (!isWithinProximity) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('You are too far from the customer location')),
+        const SnackBar(content: Text('You are too far from the customer location')),
       );
       return;
     }
@@ -72,7 +68,7 @@ class _NewOrderPageState extends State<NewOrderPage> {
       appBar: AppBar(title: const Text('New Order')),
       body: BlocListener<SalesBloc, SalesState>(
         listener: (context, state) {
-          if (state is SalesDataLoaded) {
+          if (state is OrderPlaced) { // Updated state
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Order placed successfully')),

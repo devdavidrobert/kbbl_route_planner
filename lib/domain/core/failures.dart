@@ -1,3 +1,4 @@
+// lib/domain/core/failures.dart
 
 abstract class Failure {
   final String message;

@@ -1,3 +1,4 @@
+// lib/domain/entities/auth_result.dart
 import 'user.dart';
 import 'user_profile.dart';
 

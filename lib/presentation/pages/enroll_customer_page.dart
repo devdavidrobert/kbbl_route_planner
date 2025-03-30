@@ -1,6 +1,3 @@
-// lib/presentation/pages/enroll_customer_page.dart
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,30 +7,51 @@ import '../../domain/entities/location.dart';
 import '../blocs/sales/sales_bloc.dart';
 import '../blocs/sales/sales_event.dart';
 import '../blocs/sales/sales_state.dart';
-import '../blocs/auth/auth_bloc.dart';
-import '../blocs/auth/auth_state.dart';
 
-class EnrollCustomerPage extends StatelessWidget {
+class EnrollCustomerPage extends StatefulWidget {
   final String userId;
 
-  const EnrollCustomerPage({required this.userId, super.key});
+  const EnrollCustomerPage({super.key, required this.userId});
+
+  @override
+  State<EnrollCustomerPage> createState() => _EnrollCustomerPageState();
+}
+
+class _EnrollCustomerPageState extends State<EnrollCustomerPage> {
+  String? _userRegion;
+  String? _userTerritory;
+
+  @override
+  void initState() {
+    super.initState();
+    _userRegion = 'Sample Region'; // Replace with actual logic
+    _userTerritory = 'Sample Territory'; // Replace with actual logic
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Enroll Customer'),
-        elevation: 0,
+      appBar: AppBar(title: const Text('Enroll Customer')),
+      body: EnrollCustomerForm(
+        userId: widget.userId,
+        userRegion: _userRegion,
+        userTerritory: _userTerritory,
       ),
-      body: EnrollCustomerForm(userId: userId),
     );
   }
 }
 
 class EnrollCustomerForm extends StatefulWidget {
   final String userId;
+  final String? userRegion;
+  final String? userTerritory;
 
-  const EnrollCustomerForm({required this.userId, super.key});
+  const EnrollCustomerForm({
+    super.key,
+    required this.userId,
+    this.userRegion,
+    this.userTerritory,
+  });
 
   @override
   State<EnrollCustomerForm> createState() => _EnrollCustomerFormState();
@@ -45,66 +63,11 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
   final _distributorNameController = TextEditingController();
   final _invoiceNameController = TextEditingController();
   final _locationNameController = TextEditingController();
-  Coordinates? _coordinates;
   final List<Distributor> _distributors = [];
-  String? _userRegion;
-  String? _userTerritory;
-
-  @override
-  void initState() {
-    super.initState();
-    // Get user profile data
-    final authState = context.read<AuthBloc>().state;
-    if (authState is AuthSuccess) {
-      setState(() {
-        _userRegion = authState.profile.region;
-        _userTerritory = authState.profile.territory;
-      });
-    }
-  }
+  Coordinates? _coordinates;
 
   Future<void> _captureLocation() async {
-    if (!mounted) return;
-
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location services are disabled'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permissions are denied'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Location permissions are permanently denied'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
       final position = await Geolocator.getCurrentPosition();
       setState(() {
         _coordinates = Coordinates(
@@ -112,88 +75,49 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
           longitude: position.longitude,
         );
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Location captured successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
     } catch (e) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to capture location: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Failed to capture location: $e')),
       );
     }
   }
 
   void _addDistributor() {
-    if (_distributorNameController.text.isNotEmpty &&
-        _invoiceNameController.text.isNotEmpty) {
+    final name = _distributorNameController.text.trim();
+    final invoiceName = _invoiceNameController.text.trim();
+    if (name.isNotEmpty) {
       setState(() {
         _distributors.add(Distributor(
           id: DateTime.now().toIso8601String(),
-          name: _distributorNameController.text,
-          invoiceName: _invoiceNameController.text,
+          name: name,
+          invoiceName: invoiceName.isEmpty ? name : invoiceName,
         ));
         _distributorNameController.clear();
         _invoiceNameController.clear();
       });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter both distributor name and invoice name'),
-          backgroundColor: Colors.orange,
-        ),
-      );
     }
   }
 
   void _submit() {
-    if (_userRegion == null || _userTerritory == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Your profile must have a region and territory set'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (_formKey.currentState!.validate() &&
-        _coordinates != null &&
-        _distributors.isNotEmpty) {
+    if (_formKey.currentState!.validate() && _coordinates != null) {
       final customer = Customer(
         id: DateTime.now().toIso8601String(),
-        name: _nameController.text,
-        region: _userRegion!,
-        territory: _userTerritory!,
+        name: _nameController.text.trim(),
         distributors: _distributors,
         location: Location(
-          locationName: _locationNameController.text,
+          locationName: _locationNameController.text.trim(),
           coordinates: _coordinates!,
         ),
         userId: widget.userId,
+        region: widget.userRegion,
+        territory: widget.userTerritory,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      context.read<SalesBloc>().add(AddCustomerEvent(customer));
+      context.read<SalesBloc>().add(EnrollCustomer(customer)); // Correct event
     } else {
-      String missingFields = '';
-      if (_coordinates == null) missingFields += 'Location, ';
-      if (_distributors.isEmpty) missingFields += 'Distributor, ';
-      if (!_formKey.currentState!.validate()) {
-        missingFields += 'Required form fields, ';
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Please complete: ${missingFields.substring(0, missingFields.length - 2)}'),
-          backgroundColor: Colors.red,
-        ),
+        const SnackBar(content: Text('Please complete all required fields and capture location')),
       );
     }
   }
@@ -233,7 +157,6 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            // User's Region and Territory Display
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -242,32 +165,18 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                   children: [
                     const Text(
                       'Your Territory',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Region: ${_userRegion ?? 'Not set'}',
-                      style: TextStyle(
-                        color: _userRegion == null ? Colors.red : Colors.black,
-                      ),
-                    ),
-                    Text(
-                      'Territory: ${_userTerritory ?? 'Not set'}',
-                      style: TextStyle(
-                        color:
-                            _userTerritory == null ? Colors.red : Colors.black,
-                      ),
-                    ),
+                    Text('Region: ${widget.userRegion ?? 'Not set'}',
+                        style: TextStyle(color: widget.userRegion == null ? Colors.red : Colors.black)),
+                    Text('Territory: ${widget.userTerritory ?? 'Not set'}',
+                        style: TextStyle(color: widget.userTerritory == null ? Colors.red : Colors.black)),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-
-            // Customer Basic Information
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -276,10 +185,7 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                   children: [
                     const Text(
                       'Customer Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -289,17 +195,14 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                         hintText: 'Enter the name assigned by the rep',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) => value?.isEmpty ?? true
-                          ? 'Customer name is required'
-                          : null,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Customer name is required' : null,
                     ),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-
-            // Distributor Information
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -308,10 +211,7 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                   children: [
                     const Text(
                       'Distributor Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -327,8 +227,7 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                       controller: _invoiceNameController,
                       decoration: const InputDecoration(
                         labelText: 'Invoice Name',
-                        hintText:
-                            'Enter the name under which this customer is invoiced',
+                        hintText: 'Enter the name under which this customer is invoiced',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -337,41 +236,31 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                       onPressed: _addDistributor,
                       icon: const Icon(Icons.add_business),
                       label: const Text('Add Distributor'),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
+                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
                     ),
                     if (_distributors.isNotEmpty) ...[
                       const SizedBox(height: 16),
-                      const Text(
-                        'Added Distributors:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      ..._distributors.map((distributor) {
-                        return Card(
-                          child: ListTile(
-                            title: Text(distributor.name),
-                            subtitle: Text(
-                                'Invoice Name: ${distributor.invoiceName}'),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                setState(() {
-                                  _distributors.remove(distributor);
-                                });
-                              },
+                      const Text('Added Distributors:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ..._distributors.map((distributor) => Card(
+                            child: ListTile(
+                              title: Text(distributor.name),
+                              subtitle: Text('Invoice Name: ${distributor.invoiceName}'),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    _distributors.remove(distributor);
+                                  });
+                                },
+                              ),
                             ),
-                          ),
-                        );
-                      }),
+                          )),
                     ],
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-
-            // Location Information
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -380,10 +269,7 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                   children: [
                     const Text(
                       'Location Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -393,18 +279,15 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
                         hintText: 'Enter a descriptive name for this location',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (value) => value?.isEmpty ?? true
-                          ? 'Location name is required'
-                          : null,
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Location name is required' : null,
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: _captureLocation,
                       icon: const Icon(Icons.location_on),
                       label: const Text('Capture Location'),
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
+                      style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
                     ),
                     if (_coordinates != null)
                       Padding(
@@ -419,8 +302,6 @@ class _EnrollCustomerFormState extends State<EnrollCustomerForm> {
               ),
             ),
             const SizedBox(height: 24),
-
-            // Submit Button
             ElevatedButton.icon(
               onPressed: _submit,
               icon: const Icon(Icons.save),

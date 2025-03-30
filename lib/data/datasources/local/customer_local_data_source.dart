@@ -1,4 +1,3 @@
-// lib/data/datasources/local/customer_local_data_source.dart
 import 'package:sqflite/sqflite.dart';
 import '../../models/customer_model.dart';
 import '../../../core/helpers/database_helper.dart';
@@ -36,7 +35,7 @@ class CustomerLocalDataSource {
     return customers;
   }
 
-  Future<void> addCustomer(CustomerModel customer) async {
+  Future<void> addCustomer(CustomerModel customer, {bool isSynced = true}) async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
       await txn.insert(
@@ -52,6 +51,7 @@ class CustomerLocalDataSource {
             'territory': customer.territory,
             'createdAt': customer.createdAt.toIso8601String(),
             'updatedAt': customer.updatedAt.toIso8601String(),
+            'isSynced': isSynced ? 1 : 0,
           },
           conflictAlgorithm: ConflictAlgorithm.replace);
 
@@ -69,7 +69,7 @@ class CustomerLocalDataSource {
     });
   }
 
-  Future<void> updateCustomer(CustomerModel customer) async {
+  Future<void> updateCustomer(CustomerModel customer, {bool isSynced = true}) async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
       await txn.update(
@@ -83,19 +83,18 @@ class CustomerLocalDataSource {
           'region': customer.region,
           'territory': customer.territory,
           'updatedAt': customer.updatedAt.toIso8601String(),
+          'isSynced': isSynced ? 1 : 0,
         },
         where: 'id = ?',
         whereArgs: [customer.id],
       );
 
-      // Delete existing distributors
       await txn.delete(
         'distributors',
         where: 'customerId = ?',
         whereArgs: [customer.id],
       );
 
-      // Insert updated distributors
       for (var distributor in customer.distributors) {
         await txn.insert(
           'distributors',
@@ -114,19 +113,43 @@ class CustomerLocalDataSource {
   Future<void> deleteCustomer(String customerId) async {
     final db = await dbHelper.database;
     await db.transaction((txn) async {
-      // Delete distributors first due to foreign key constraint
       await txn.delete(
         'distributors',
         where: 'customerId = ?',
         whereArgs: [customerId],
       );
-
-      // Delete customer
       await txn.delete(
         'customers',
         where: 'id = ?',
         whereArgs: [customerId],
       );
     });
+  }
+
+  Future<List<CustomerModel>> getUnsyncedCustomers() async {
+    final db = await dbHelper.database;
+    final maps = await db.query('customers', where: 'isSynced = ?', whereArgs: [0]);
+    final customers = <CustomerModel>[];
+
+    for (var customerMap in maps) {
+      final distributorMaps = await db.query(
+        'distributors',
+        where: 'customerId = ?',
+        whereArgs: [customerMap['id']],
+      );
+      final customer = CustomerModel.fromJson({
+        ...customerMap,
+        'distributors': distributorMaps,
+        'location': {
+          'locationName': customerMap['locationName'],
+          'coordinates': {
+            'latitude': customerMap['latitude'],
+            'longitude': customerMap['longitude'],
+          },
+        },
+      });
+      customers.add(customer);
+    }
+    return customers;
   }
 }

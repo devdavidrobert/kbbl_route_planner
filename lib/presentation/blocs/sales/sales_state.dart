@@ -1,52 +1,48 @@
-// lib/presentation/blocs/sales/sales_state.dart
-import '../../../domain/entities/customer.dart';
-import '../../../domain/entities/route_plan.dart';
+import 'package:equatable/equatable.dart';
 import '../../../domain/entities/order.dart';
+import '../../../domain/entities/customer.dart';
 
-abstract class SalesState {
+abstract class SalesState extends Equatable {
   const SalesState();
+  @override
+  List<Object?> get props => [];
 }
 
-class SalesInitial extends SalesState {
-  const SalesInitial();
-}
+class SalesInitial extends SalesState {}
 
-class SalesLoading extends SalesState {
-  const SalesLoading();
-}
-
-class SalesDataLoaded extends SalesState {
-  final List<Customer> customers;
-  final List<RoutePlan> routePlans;
-  final Map<String, dynamic>? performance;
-
-  const SalesDataLoaded({
-    required this.customers,
-    required this.routePlans,
-    this.performance,
-  });
-}
-
-class SalesError extends SalesState {
-  final String message;
-
-  const SalesError({required this.message});
-}
+class SalesLoading extends SalesState {}
 
 class OrdersLoaded extends SalesState {
   final List<Order> orders;
+  const OrdersLoaded(this.orders);
+  @override
+  List<Object?> get props => [orders];
+}
 
-  const OrdersLoaded({required this.orders});
+class CustomersLoaded extends SalesState {
+  final List<Customer> customers;
+  const CustomersLoaded(this.customers);
+  @override
+  List<Object?> get props => [customers];
 }
 
 class OrderPlaced extends SalesState {
   final String orderId;
-
-  const OrderPlaced({required this.orderId});
+  const OrderPlaced(this.orderId);
+  @override
+  List<Object?> get props => [orderId];
 }
 
 class CustomerEnrolled extends SalesState {
   final String customerId;
+  const CustomerEnrolled(this.customerId);
+  @override
+  List<Object?> get props => [customerId];
+}
 
-  const CustomerEnrolled({required this.customerId});
+class SalesError extends SalesState {
+  final String message;
+  const SalesError(this.message);
+  @override
+  List<Object?> get props => [message];
 }

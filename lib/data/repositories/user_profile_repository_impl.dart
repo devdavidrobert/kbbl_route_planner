@@ -11,23 +11,31 @@ import 'package:logging/logging.dart';
 
 class UserProfileRepositoryImpl implements UserProfileRepository {
   final UserProfileRemoteDataSource remoteDataSource;
-  final Connectivity connectivity; // Already defined
+  final Connectivity connectivity;
   final _logger = Logger('UserProfileRepositoryImpl');
 
   UserProfileRepositoryImpl({
     required this.remoteDataSource,
-    required this.connectivity, // Already initialized
+    required this.connectivity,
   });
+
+  Future<bool> _checkConnectivity() async {
+    try {
+      final result = await connectivity.checkConnectivity().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw NetworkException('Connectivity check timed out'),
+      );
+      return result != ConnectivityResult.none;
+    } catch (e) {
+      _logger.severe('Connectivity check failed: $e');
+      return false;
+    }
+  }
 
   @override
   Future<Either<Failure, UserProfile?>> getUserProfile(String email) async {
     try {
-      final connectivityResult = await connectivity.checkConnectivity().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () =>
-                throw NetworkException('Connectivity check timed out'),
-          );
-      if (connectivityResult == ConnectivityResult.none) {
+      if (!await _checkConnectivity()) {
         _logger.warning('No internet connection');
         return Left(NetworkFailure('No internet connection'));
       }
@@ -43,8 +51,8 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     } on NetworkException catch (e) {
       _logger.severe('Network error: $e');
       return Left(NetworkFailure(e.toString()));
-    } catch (e) {
-      _logger.severe('Unexpected error: $e');
+    } catch (e, stackTrace) {
+      _logger.severe('Unexpected error: $e', e, stackTrace);
       return Left(ServerFailure('Failed to get user profile: $e'));
     }
   }
@@ -52,18 +60,12 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
   @override
   Future<Either<Failure, void>> createUserProfile(UserProfile profile) async {
     try {
-      final connectivityResult = await connectivity.checkConnectivity().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () =>
-                throw NetworkException('Connectivity check timed out'),
-          );
-      if (connectivityResult == ConnectivityResult.none) {
+      if (!await _checkConnectivity()) {
         _logger.warning('No internet connection');
         return Left(NetworkFailure('No internet connection'));
       }
 
-      await remoteDataSource
-          .createUserProfile(UserProfileModel.fromEntity(profile));
+      await remoteDataSource.createUserProfile(UserProfileModel.fromEntity(profile));
       return const Right(null);
     } on UnauthorizedException catch (e) {
       _logger.severe('Unauthorized error: $e');
@@ -74,8 +76,8 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     } on NetworkException catch (e) {
       _logger.severe('Network error: $e');
       return Left(NetworkFailure(e.toString()));
-    } catch (e) {
-      _logger.severe('Unexpected error: $e');
+    } catch (e, stackTrace) {
+      _logger.severe('Unexpected error: $e', e, stackTrace);
       return Left(ServerFailure('Failed to create user profile: $e'));
     }
   }
@@ -83,18 +85,12 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
   @override
   Future<Either<Failure, void>> updateUserProfile(UserProfile profile) async {
     try {
-      final connectivityResult = await connectivity.checkConnectivity().timeout(
-            const Duration(seconds: 10),
-            onTimeout: () =>
-                throw NetworkException('Connectivity check timed out'),
-          );
-      if (connectivityResult == ConnectivityResult.none) {
+      if (!await _checkConnectivity()) {
         _logger.warning('No internet connection');
         return Left(NetworkFailure('No internet connection'));
       }
 
-      await remoteDataSource
-          .updateUserProfile(UserProfileModel.fromEntity(profile));
+      await remoteDataSource.updateUserProfile(UserProfileModel.fromEntity(profile));
       return const Right(null);
     } on UnauthorizedException catch (e) {
       _logger.severe('Unauthorized error: $e');
@@ -105,8 +101,8 @@ class UserProfileRepositoryImpl implements UserProfileRepository {
     } on NetworkException catch (e) {
       _logger.severe('Network error: $e');
       return Left(NetworkFailure(e.toString()));
-    } catch (e) {
-      _logger.severe('Unexpected error: $e');
+    } catch (e, stackTrace) {
+      _logger.severe('Unexpected error: $e', e, stackTrace);
       return Left(ServerFailure('Failed to update user profile: $e'));
     }
   }

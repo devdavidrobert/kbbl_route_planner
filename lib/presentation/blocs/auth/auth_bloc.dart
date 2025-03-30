@@ -30,42 +30,43 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   })  : _authRepository = authRepository,
         super(AuthInitial()) {
     on<SignInWithGooglePressed>((event, emit) async {
-      emit(AuthLoading());
-      try {
-        _logger.info('Starting login process');
-        
-        // First, sign in with Google
-        final authResult = await _authRepository.signInWithGoogle();
-        
-        if (authResult.needsProfile) {
-          emit(AuthNeedsProfile(user: authResult.user));
-        } else if (authResult.profile != null) {
-          emit(AuthSuccess(
-            user: authResult.user,
-            profile: authResult.profile!,
-          ));
-        } else {
-          emit(AuthFailure(message: 'Profile data is missing'));
-        }
-      } catch (e) {
-        _logger.severe('Login error: $e');
-        if (e.toString().contains('network_error') || 
-            e.toString().contains('socket') ||
-            e.toString().contains('NetworkException')) {
-          emit(AuthFailure(message: 'Unable to sign in. Please check your internet connection.'));
-        } else if (e.toString().contains('popup_closed_by_user') || 
-                   e.toString().contains('cancelled') ||
-                   e.toString().contains('user_cancelled')) {
-          emit(AuthFailure(message: 'Sign in was cancelled. Please try again.'));
-        } else if (e.toString().contains('account_exists_with_different_credential')) {
-          emit(AuthFailure(message: 'An account already exists with a different sign-in method.'));
-        } else if (e.toString().contains('timed out')) {
-          emit(AuthFailure(message: 'Sign in timed out. Please try again.'));
-        } else {
-          emit(AuthFailure(message: e.toString()));
-        }
-      }
-    });
+  emit(AuthLoading());
+  try {
+    _logger.info('Starting login process');
+    final authResult = await _authRepository.signInWithGoogle();
+    _logger.fine('AuthResult: user=${authResult.user.email}, needsProfile=${authResult.needsProfile}, profile=${authResult.profile}');
+    if (authResult.needsProfile) {
+      _logger.info('User needs profile: ${authResult.user.email}');
+      emit(AuthNeedsProfile(user: authResult.user));
+    } else if (authResult.profile != null) {
+      _logger.info('User authenticated with profile: ${authResult.user.email}');
+      emit(AuthSuccess(
+        user: authResult.user,
+        profile: authResult.profile!,
+      ));
+    } else {
+      _logger.severe('Profile data is missing after sign-in');
+      emit(AuthFailure(message: 'Profile data is missing'));
+    }
+  } catch (e, stackTrace) {
+    _logger.severe('Login error: $e', e, stackTrace);
+    if (e.toString().contains('network_error') || 
+        e.toString().contains('socket') ||
+        e.toString().contains('NetworkException')) {
+      emit(AuthFailure(message: 'Unable to sign in. Please check your internet connection.'));
+    } else if (e.toString().contains('popup_closed_by_user') || 
+               e.toString().contains('cancelled') ||
+               e.toString().contains('user_cancelled')) {
+      emit(AuthFailure(message: 'Sign in was cancelled. Please try again.'));
+    } else if (e.toString().contains('account_exists_with_different_credential')) {
+      emit(AuthFailure(message: 'An account already exists with a different sign-in method.'));
+    } else if (e.toString().contains('timed out')) {
+      emit(AuthFailure(message: 'Sign in timed out. Please try again.'));
+    } else {
+      emit(AuthFailure(message: 'Sign in failed: $e'));
+    }
+  }
+});
 
     on<SignOutPressed>((event, emit) async {
       emit(AuthLoading());
